@@ -1,151 +1,292 @@
+//******************************************
+//			  Designed and developed 
+//				      	 by
+//			Tamojit Saha, Angshuman Hota
+//******************************************
+
+//******************************************
+//				    PROJECT NAME:
+//	User defined password protected digital
+//	lock based on Arduino Uno(ATmega328P-PU)
+//******************************************
 #include <Keypad.h>
-#include<LiquidCrystal.h>
-#include<EEPROM.h>
 #include<Servo.h>
+#include<LiquidCrystal.h>
 
-Servo myservo;
-//int pos=0;
-LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
-char password[4] = {NULL};
-char pass[4], pass1[4];
-int i = 0;
-char customKey = 0;
-const byte ROWS = 4; //four rows
-const byte COLS = 3; //four columns
-char hexaKeys[ROWS][COLS] =
-{
-  {'1', '2', '3'},
-  {'4', '5', '6'},
-  {'7', '8', '9'},
-  {'*', '0', '#'}
+#include<EEPROM.h>
+
+LiquidCrystal liquid_crystal_display(12, 11, 9, 8, 7, 6);
+Servo lock;
+char password[4];
+
+char initial_password[4],new_password[4];
+
+int i=0;
+
+char key_lock = 0;
+char key_pressed=0;
+
+const byte rows = 4; 
+
+const byte columns = 3; 
+
+char hexaKeys[rows][columns] = {
+
+{'1','2','3'},
+
+{'4','5','6'},
+
+{'7','8','9'},
+
+{'*','0','#'}
+
 };
-byte rowPins[ROWS] = {15, 14, 2, 3}; //connect to the row pinouts of the keypad
-byte colPins[COLS] = {4, 5, 7}; //connect to the column pinouts of the keypad
-//initialize an instance of class NewKeypad
-Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+
+byte row_pins[rows] = {2, 3, 4, 5};
+
+byte column_pins[columns] = {A0,A1,A2};
+
+Keypad keypad_key = Keypad( makeKeymap(hexaKeys), row_pins, column_pins, rows, columns);
+
+
+
+
 void setup()
+
 {
-  lcd.begin(16, 2);
-  lcd.print("  Electronic ");
-  lcd.setCursor(0, 1);
-  lcd.print("  Keypad Lock ");
-  delay(2000);
-  lcd.clear();
-  lcd.print("Enter Ur Passkey:");
-  lcd.setCursor(0, 1);
-  for (int j = 0; j < 4; j++)
-  {
-    EEPROM.write(j, j + 49);
-  }
-  for (int j = 0; j < 4; j++)
-  {
-    pass[j] = EEPROM.read(j);
-  }
-  myservo.attach(6);
+lock.attach(10);  
+liquid_crystal_display.begin(16,2);
+liquid_crystal_display.setCursor(0,0);
+liquid_crystal_display.print(" Electronic Lock ");
+
+delay(2000);
+liquid_crystal_display.clear();
+liquid_crystal_display.print("Enter Password:");
+liquid_crystal_display.setCursor(0,1);
+initialpassword();
+
+lock.write(0);
 }
-void change()
-{
-  int j = 0;
-  lcd.clear();
-  lcd.print("UR Current Pass");
-  lcd.setCursor(0, 1);
-  while (j < 4)
-  {
-    char key = customKeypad.getKey();
-    if (key)
-    {
-      pass1[j++] = key;
-      lcd.print(key);
-    }
-    key = 0;
-  }
-  delay(500);
 
-  if ((strncmp(pass1, pass, 4)))
-  {
-    lcd.clear();
-    lcd.print("Wrong Passkey...");
-    lcd.setCursor(0, 1);
-    lcd.print("Better Luck Again");
-    delay(1000);
-  }
-  else
-  {
-    j = 0;
 
-    lcd.clear();
-    lcd.print("Enter New Passk:");
-    lcd.setCursor(0, 1);
-    while (j < 4)
-    {
-      char key = customKeypad.getKey();
-      if (key)
-      {
-        pass[j] = key;
-        lcd.print(key);
-        EEPROM.write(j, key);
-        j++;
-
-      }
-    }
-    lcd.print("  Done......");
-    delay(1000);
-  }
-  lcd.clear();
-  lcd.print("Enter Ur Passk:");
-  lcd.setCursor(0, 1);
-  customKey = 0;
-}
 
 
 void loop()
 {
-  customKey = customKeypad.getKey();
-  if (customKey == '#')
-    change();
-  else if (customKey != '#')
+  
+  key_pressed = keypad_key.getKey();
+  
+  if(key_pressed=='#')
+    {change();}
+
+  if (key_pressed == '1' ||key_pressed == '2' || 
+  key_pressed == '3' || key_pressed == '4' ||
+  key_pressed == '5' || key_pressed == '6'||
+  key_pressed == '7' || key_pressed == '8'||
+  key_pressed == '9' || key_pressed == '0')
+
   {
-    while (i < 4)
-    {
-      password[i] = customKey;
-      lcd.setCursor(0, i);
-      lcd.print(customKey);
-      i++;
-    }
+    password[i++]=key_pressed;
+
+    liquid_crystal_display.print(key_pressed);
+
   }
-  if (i == 4 && customKey == '*')
+
+  if(i==4)
+
   {
+
     delay(200);
-    if ((strncmp(password, pass, 4)) == 0)
+
+    for(int j=0;j<4;j++)
+
+      initial_password[j]=EEPROM.read(j);
+
+    if(!(strncmp(password, initial_password,4)))
+
     {
+      int isOpen = 0;
+      liquid_crystal_display.clear();
 
-      lcd.clear();
-      lcd.print("Passkey Accepted");
+      liquid_crystal_display.print("Pass Accepted");
+      liquid_crystal_display.setCursor(0,1);
+      liquid_crystal_display.print("Door Opened!");
+      if(lock.read() == 0)
+      lock.write(90);
+      liquid_crystal_display.clear();
+      liquid_crystal_display.setCursor(0,0);
+      liquid_crystal_display.print("Door Opened!");
+      liquid_crystal_display.setCursor(0,1);
+      liquid_crystal_display.print("Press * to lock");
+      while(isOpen != 1)
+      {
+        key_pressed= keypad_key.getKey();
+        if(key_pressed == '*')
+        {
+          if(lock.read() == 90)
+          lock.write(0);  
+          liquid_crystal_display.clear();
+          liquid_crystal_display.setCursor(0,0);
+          liquid_crystal_display.print("Door Locked!");
+          isOpen = 1;
+        }
+      }
+     
+           
       delay(2000);
-      // for(pos=0;pos<=90;pos++)
+      liquid_crystal_display.clear();
+      liquid_crystal_display.setCursor(0,0);
+      liquid_crystal_display.print("Press # to");
+      liquid_crystal_display.setCursor(0,1);
+      liquid_crystal_display.print("change password.");
 
-      myservo.write(90);
-
-      lcd.setCursor(0, 1);
-      lcd.print("#.Change Passkey");
       delay(2000);
-      lcd.clear();
-      lcd.print("Enter Passkey:");
-      lcd.setCursor(0, 1);
-      i = 0;
+
+      liquid_crystal_display.clear();
+
+      liquid_crystal_display.print("Enter Password:");
+
+      liquid_crystal_display.setCursor(0,1);
+
+      i=0;
+
+
+
+
     }
 
     else
     {
-      lcd.clear();
-      lcd.print("Access Denied...");
-      lcd.setCursor(0, 1);
-      lcd.print("#.Change Passkey");
+      liquid_crystal_display.clear();
+      liquid_crystal_display.print("Wrong Password!");
+      liquid_crystal_display.setCursor(0,1);
+      liquid_crystal_display.print("Try again...");
       delay(2000);
-      lcd.clear();
-      lcd.print("Enter Passkey:");
-      lcd.setCursor(0, 1);
-      i = 0;
+      liquid_crystal_display.clear();
+      liquid_crystal_display.print("Enter Password");
+      liquid_crystal_display.setCursor(0,1);
+      i=0;
     }
+
   }
+
 }
+
+void change()
+
+{
+
+  int j=0;
+
+  liquid_crystal_display.clear();
+
+  liquid_crystal_display.print("Current Password");
+
+  liquid_crystal_display.setCursor(0,1);
+
+  while(j<4)
+
+  {
+
+    char key=keypad_key.getKey();
+
+    if(key== '1' ||key == '2' || 
+  key == '3' || key == '4' ||
+  key == '5' || key == '6'||
+  key == '7' || key == '8'||
+  key == '9' || key == '0')
+
+    {
+
+      new_password[j++]=key;
+
+      liquid_crystal_display.print(key);
+
+       
+
+    }
+
+    key=0;
+
+  }
+
+  delay(500);
+
+
+
+
+  if((strncmp(new_password, initial_password, 4)))
+
+  {
+
+    liquid_crystal_display.clear();
+
+    liquid_crystal_display.print("Wrong Password!");
+
+    liquid_crystal_display.setCursor(0,1);
+
+    liquid_crystal_display.print("Try Again...");
+
+    delay(1000);
+
+  }
+
+  else
+
+  {
+
+    j=0;
+
+    liquid_crystal_display.clear();
+
+    liquid_crystal_display.print("New Password:");
+
+    liquid_crystal_display.setCursor(0,1);
+
+    while(j<4)
+
+    {
+
+      char key=keypad_key.getKey();
+
+      if(key== '1' ||key == '2' || 
+  key == '3' || key == '4' ||
+  key == '5' || key == '6'||
+  key == '7' || key == '8'||
+  key == '9' || key == '0')
+
+      {
+        initial_password[j]=key;
+        liquid_crystal_display.print(key);
+        EEPROM.write(j,key);
+        j++;
+      }
+    }
+    liquid_crystal_display.clear();
+    liquid_crystal_display.setCursor(0,0);
+    liquid_crystal_display.print("Password changed");
+    liquid_crystal_display.setCursor(0,1);
+    liquid_crystal_display.print("successfully!");
+    delay(2000);
+  }
+
+  liquid_crystal_display.clear();
+  liquid_crystal_display.print("Enter Password:");
+  liquid_crystal_display.setCursor(0,1);
+  key_pressed=0;
+
+}
+
+void initialpassword(){
+
+  //char initial_pswd = 
+  for(int j=0;j<4;j++)
+
+    EEPROM.write(j, '0');
+
+  for(int j=0;j<4;j++){
+    initial_password[j]=EEPROM.read(j);
+  }
+    
+
+} 
